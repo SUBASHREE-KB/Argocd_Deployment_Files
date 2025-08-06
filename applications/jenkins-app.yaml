@@ -1,0 +1,85 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jenkins
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://charts.jenkins.io
+    chart: jenkins
+    targetRevision: "5.8.73"
+    helm:
+      values: |
+        controller:
+          serviceType: LoadBalancer
+          servicePort: 80
+          servicePorts:
+            - name: http
+              port: 80
+              targetPort: 8080
+          admin:
+            password: "admin123"
+          podSecurityContext:
+            enabled: true
+            runAsUser: 1000
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containerSecurityContext:
+            enabled: true
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            seccompProfile:
+              type: RuntimeDefault
+          image:
+            tag: "2.516.1-jdk21"
+          persistence:
+            enabled: true
+            storageClass: "gp2"
+            accessMode: ReadWriteOnce
+            size: "8Gi"
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1024Mi"
+        agent:
+          containerSecurityContext:
+            enabled: true
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: jenkins
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  ignoreDifferences:
+  - group: apps
+    kind: StatefulSet
+    name: jenkins
+    namespace: jenkins
+    jsonPointers:
+      - /spec/template/spec/containers/0/resources
+      - /spec/template/spec/containers/0/securityContext/readOnlyRootFilesystem
+      - /spec/template/spec/containers/0/volumeMounts/0/readOnly
+      - /spec/template/spec/containers/0/volumeMounts/2/readOnly
+      - /spec/template/spec/containers/1/resources
+      - /spec/template/spec/containers/1/securityContext/readOnlyRootFilesystem
+

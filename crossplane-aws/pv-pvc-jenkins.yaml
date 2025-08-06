@@ -1,0 +1,27 @@
+# pv-pvc-jenkins.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jenkins-ebs-pv
+spec:
+  capacity:
+    storage: 8Gi
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: manual-ebs
+  persistentVolumeReclaimPolicy: Retain
+  csi:
+    driver: ebs.csi.aws.com
+    volumeHandle: "{{ ec2.aws.crossplane.io/jenkins-data-vol.external-name }}"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jenkins-data-pvc
+  namespace: jenkins
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: manual-ebs
+  resources:
+    requests:
+      storage: 8Gi
+  volumeName: jenkins-ebs-pv
