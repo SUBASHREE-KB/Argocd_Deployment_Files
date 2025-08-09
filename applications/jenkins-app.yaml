@@ -20,26 +20,33 @@ spec:
               targetPort: 8080
           admin:
             password: "admin123"
+            
           podSecurityContext:
             enabled: true
             runAsUser: 1000
             fsGroup: 1000
             seccompProfile:
               type: RuntimeDefault
+              
           containerSecurityContext:
             enabled: true
             runAsNonRoot: true
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: false
+            readOnlyRootFilesystem: false  
             seccompProfile:
               type: RuntimeDefault
+              
           image:
             tag: "2.516.1-jdk21"
+            
           persistence:
             enabled: true
-            storageClass: "gp2"
-            accessMode: ReadWriteOnce
-            size: "8Gi"
+            existingClaim: "jenkins-data-pvc" 
+            storageClass: "" 
+            size: "8Gi"  
+            accessMode: "ReadWriteOnce"
+
+            
           resources:
             requests:
               cpu: "500m"
@@ -47,39 +54,31 @@ spec:
             limits:
               cpu: "1000m"
               memory: "1024Mi"
-        agent:
-          containerSecurityContext:
-            enabled: true
-            allowPrivilegeEscalation: false
-            seccompProfile:
-              type: RuntimeDefault
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "128Mi"
-            limits:
-              cpu: "200m"
-              memory: "256Mi"
+
+        # Fix sidecar resource limits to avoid policy violations
+        controller:
+          sidecars:
+            configAutoReload:
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "64Mi"
+                limits:
+                  cpu: "100m"
+                  memory: "128Mi"
+
+        # Disable default storage class creation
+        persistence:
+          enabled: true
+          existingClaim: "jenkins-data-pvc"
 
   destination:
     server: https://kubernetes.default.svc
     namespace: jenkins
+    
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-  ignoreDifferences:
-  - group: apps
-    kind: StatefulSet
-    name: jenkins
-    namespace: jenkins
-    jsonPointers:
-      - /spec/template/spec/containers/0/resources
-      - /spec/template/spec/containers/0/securityContext/readOnlyRootFilesystem
-      - /spec/template/spec/containers/0/volumeMounts/0/readOnly
-      - /spec/template/spec/containers/0/volumeMounts/2/readOnly
-      - /spec/template/spec/containers/1/resources
-      - /spec/template/spec/containers/1/securityContext/readOnlyRootFilesystem
-

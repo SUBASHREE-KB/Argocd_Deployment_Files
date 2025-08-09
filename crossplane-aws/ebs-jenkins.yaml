@@ -8,9 +8,11 @@ spec:
     name: default
   forProvider:
     region: us-east-1
-    availabilityZone: us-east-1a     # E.g. ap-south-1a
-    volumeType: gp2
-    size: 8
+    availabilityZone: us-east-1a  
+    volumeType: gp2 
+    size: 8  
     tags:
+      Name: jenkins-data-volume
       app: jenkins
       owner: ci
+      managed-by: crossplane
