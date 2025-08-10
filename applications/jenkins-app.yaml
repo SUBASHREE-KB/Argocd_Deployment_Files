@@ -12,15 +12,29 @@ spec:
     helm:
       values: |
         controller:
-          serviceType: LoadBalancer
-          servicePort: 80
-          servicePorts:
-            - name: http
-              port: 80
-              targetPort: 8080
+          serviceType: ClusterIP
+          servicePort: 8080
+          jenkinsUriPrefix: "/jenkins"
+              
+          # Additional volumes for secret
+          additionalVolumes:
+            - name: jenkins-admin-secret-vol
+              secret:
+                secretName: jenkins-admin-secret
+                
+          # Additional volume mounts for secret
+          additionalVolumeMounts:
+            - name: jenkins-admin-secret-vol
+              mountPath: /run/secrets/jenkins
+              readOnly: true
+
+          # Admin configuration using existing secret
           admin:
-            password: "admin123"
+            existingSecret: jenkins-admin-secret
+            userKey: jenkins-admin-user
+            passwordKey: jenkins-admin-password  # Specify the password key
             
+          # Security contexts
           podSecurityContext:
             enabled: true
             runAsUser: 1000
@@ -36,17 +50,19 @@ spec:
             seccompProfile:
               type: RuntimeDefault
               
+          # Jenkins image
           image:
             tag: "2.516.1-jdk21"
             
+          # Persistence configuration
           persistence:
             enabled: true
             existingClaim: "jenkins-data-pvc" 
-            storageClass: "" 
-            size: "8Gi"  
+            storageClass: ""  # Empty to use PVC's storage class
+            size: "8Gi"     # Match your PVC size
             accessMode: "ReadWriteOnce"
-
             
+          # Resource limits
           resources:
             requests:
               cpu: "500m"
@@ -55,10 +71,10 @@ spec:
               cpu: "1000m"
               memory: "1024Mi"
 
-        # Fix sidecar resource limits to avoid policy violations
-        controller:
+          # Sidecar configuration
           sidecars:
             configAutoReload:
+              enabled: true
               resources:
                 requests:
                   cpu: "50m"
@@ -66,12 +82,16 @@ spec:
                 limits:
                   cpu: "100m"
                   memory: "128Mi"
-
+                  
+          # Agent configuration
+          agent:
+            enabled: disabled
+        
         # Disable default storage class creation
         persistence:
           enabled: true
           existingClaim: "jenkins-data-pvc"
-
+              
   destination:
     server: https://kubernetes.default.svc
     namespace: jenkins

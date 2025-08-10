@@ -12,7 +12,11 @@ spec:
     helm:
       values: |
         service:
-          type: LoadBalancer
+          type: ClusterIP
+
+        sonarProperties:
+          sonar.web.context: /sonarqube
+
 
         resources:
           requests:
@@ -21,9 +25,6 @@ spec:
           limits:
             cpu: "800m"
             memory: "2Gi"
-
-        securityContext:
-          
 
         containerSecurityContext:
           runAsUser: 1000
@@ -39,10 +40,15 @@ spec:
               - name: sonarqube
                 mountPath: /opt/sonarqube
 
+        # PostgreSQL configuration
         postgresql:
           enabled: true
           auth:
-            postgresPassword: "sonar123"
+            existingSecret: sonarqube-db-secret
+            existingSecretPasswordKey: postgresql-password
+            existingSecretPostgresPasswordKey: postgresql-postgres-password
+
+
           primary:
             resources:
               requests:
@@ -51,6 +57,17 @@ spec:
               limits:
                 cpu: "300m"
                 memory: "512Mi"
+
+        # SonarQube admin credentials from secret
+        account:
+          existingSecret: sonarqube-db-secret
+          usernameKey: sonarqube-username
+          passwordKey: sonarqube-password
+
+        # Monitoring passcode from secret
+        monitoring:
+          existingSecret: sonarqube-db-secret
+          passcodeKey: monitoringPasscode
 
   destination:
     server: https://kubernetes.default.svc
@@ -61,3 +78,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - PruneLast=true
